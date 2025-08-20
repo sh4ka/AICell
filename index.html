@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AICell - Carta Blanca</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .title {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            color: white;
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            align-items: center;
+        }
+
+        .game-container {
+            flex: 1;
+            padding: 20px;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .top-area {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .cell, .foundation {
+            aspect-ratio: 2.5/3.5;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .cell:hover, .foundation:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .foundation {
+            background: rgba(0, 255, 0, 0.1);
+            border-color: rgba(0, 255, 0, 0.3);
+        }
+
+        .foundation:hover {
+            background: rgba(0, 255, 0, 0.2);
+            border-color: rgba(0, 255, 0, 0.5);
+        }
+
+        .tableau-area {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+        }
+
+        .column {
+            min-height: 150px;
+            position: relative;
+            padding-bottom: 350px; /* Extra space for stacked cards with more overlap */
+        }
+
+        .card {
+            position: absolute;
+            width: 100%;
+            aspect-ratio: 2.5/3.5;
+            background: white;
+            border: 1px solid #333;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 8px;
+            font-size: clamp(16px, 3vw, 24px);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .card.selected {
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            transform: translateY(-5px);
+        }
+
+        .card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .card.red {
+            color: #dc3545;
+        }
+
+        .card.black {
+            color: #000;
+        }
+
+        .card-value {
+            font-size: 1em;
+            line-height: 1;
+        }
+
+        .card-suit {
+            font-size: 1.2em;
+            margin-top: 2px;
+            line-height: 1;
+        }
+
+        .placeholder-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .drop-hint {
+            background: rgba(0, 255, 0, 0.3) !important;
+            border-color: #00ff00 !important;
+        }
+
+        .win-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 1000;
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .win-message h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 36px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 5px;
+            }
+
+            .title {
+                font-size: 18px;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+
+            .stats {
+                font-size: 12px;
+                gap: 10px;
+            }
+
+            .game-container {
+                padding: 10px;
+            }
+
+            .top-area, .tableau-area {
+                gap: 5px;
+            }
+
+            .top-area {
+                margin-bottom: 20px;
+            }
+
+            .card {
+                font-size: clamp(12px, 2.5vw, 18px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .stats {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="title">♠️ Freecell ♥️</div>
+    <div class="controls">
+        <button onclick="game.newGame()">Nueva Partida</button>
+        <button onclick="game.undo()">Deshacer</button>
+        <button onclick="game.autoComplete()">Auto Completar</button>
+    </div>
+    <div class="stats">
+        <span>Movimientos: <span id="moves">0</span></span>
+        <span>Tiempo: <span id="time">00:00</span></span>
+    </div>
+</div>
+
+<div class="game-container">
+    <div class="top-area">
+        <div class="cell" data-cell="0">
+            <span class="placeholder-text">Libre</span>
+        </div>
+        <div class="cell" data-cell="1">
+            <span class="placeholder-text">Libre</span>
+        </div>
+        <div class="cell" data-cell="2">
+            <span class="placeholder-text">Libre</span>
+        </div>
+        <div class="cell" data-cell="3">
+            <span class="placeholder-text">Libre</span>
+        </div>
+        <div class="foundation" data-foundation="0">
+            <span class="placeholder-text">A♠</span>
+        </div>
+        <div class="foundation" data-foundation="1">
+            <span class="placeholder-text">A♥</span>
+        </div>
+        <div class="foundation" data-foundation="2">
+            <span class="placeholder-text">A♣</span>
+        </div>
+        <div class="foundation" data-foundation="3">
+            <span class="placeholder-text">A♦</span>
+        </div>
+    </div>
+
+    <div class="tableau-area">
+        <div class="column" data-column="0"></div>
+        <div class="column" data-column="1"></div>
+        <div class="column" data-column="2"></div>
+        <div class="column" data-column="3"></div>
+        <div class="column" data-column="4"></div>
+        <div class="column" data-column="5"></div>
+        <div class="column" data-column="6"></div>
+        <div class="column" data-column="7"></div>
+    </div>
+</div>
+
+<script>
+    class FreecellGame {
+        constructor() {
+            this.suits = ['♠', '♥', '♣', '♦'];
+            this.values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            this.columns = [[], [], [], [], [], [], [], []];
+            this.cells = [null, null, null, null];
+            this.foundations = [[], [], [], []];
+            this.selectedCard = null;
+            this.selectedFrom = null;
+            this.moves = 0;
+            this.startTime = null;
+            this.timerInterval = null;
+            this.history = [];
+            this.init();
+        }
+
+        init() {
+            this.newGame();
+            this.setupEventListeners();
+        }
+
+        createDeck() {
+            const deck = [];
+            for (let suit of this.suits) {
+                for (let value of this.values) {
+                    deck.push({
+                        suit: suit,
+                        value: value,
+                        color: (suit === '♥' || suit === '♦') ? 'red' : 'black',
+                        numValue: this.getNumericValue(value)
+                    });
+                }
+            }
+            return deck;
+        }
+
+        getNumericValue(value) {
+            if (value === 'A') return 1;
+            if (value === 'J') return 11;
+            if (value === 'Q') return 12;
+            if (value === 'K') return 13;
+            return parseInt(value);
+        }
+
+        shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        newGame() {
+            this.columns = [[], [], [], [], [], [], [], []];
+            this.cells = [null, null, null, null];
+            this.foundations = [[], [], [], []];
+            this.selectedCard = null;
+            this.selectedFrom = null;
+            this.moves = 0;
+            this.history = [];
+
+            const deck = this.shuffle(this.createDeck());
+
+            for (let i = 0; i < 52; i++) {
+                const columnIndex = i % 8;
+                this.columns[columnIndex].push(deck[i]);
+            }
+
+            this.updateDisplay();
+            this.startTimer();
+            document.getElementById('moves').textContent = '0';
+
+            // Check for auto-moves at game start
+            setTimeout(() => this.autoMoveToFoundations(), 500);
+        }
+
+        startTimer() {
+            if (this.timerInterval) clearInterval(this.timerInterval);
+            this.startTime = Date.now();
+            this.timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('time').textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        setupEventListeners() {
+            document.addEventListener('click', (e) => {
+                const clickedElement = e.target;
+
+                // Check what was clicked
+                const card = clickedElement.closest('.card');
+                const foundation = clickedElement.closest('.foundation');
+                const cell = clickedElement.closest('.cell');
+                const column = clickedElement.closest('.column');
+
+                // Handle foundation clicks first (highest priority)
+                if (foundation) {
+                    this.handleFoundationClick(foundation);
+                    return;
+                }
+
+                // Handle cell clicks
+                if (cell) {
+                    this.handleCellClick(cell);
+                    return;
+                }
+
+                // Handle card clicks in columns
+                if (card && column) {
+                    this.handleCardClick(card);
+                    return;
+                }
+
+                // Handle empty column clicks
+                if (column) {
+                    this.handleEmptyColumnClick(column);
+                    return;
+                }
+            });
+
+            // Touch support for mobile
+            let touchCard = null;
+            document.addEventListener('touchstart', (e) => {
+                touchCard = e.target.closest('.card');
+                if (touchCard) {
+                    touchCard.style.opacity = '0.7';
+                }
+            }, {passive: true});
+
+            document.addEventListener('touchend', (e) => {
+                if (touchCard) {
+                    touchCard.style.opacity = '1';
+
+                    const foundation = e.target.closest('.foundation');
+                    const cell = e.target.closest('.cell');
+
+                    if (foundation) {
+                        this.handleFoundationClick(foundation);
+                    } else if (cell) {
+                        this.handleCellClick(cell);
+                    } else {
+                        this.handleCardClick(touchCard);
+                    }
+                    touchCard = null;
+                }
+            }, {passive: true});
+        }
+
+        handleCardClick(cardElement) {
+            const location = this.getCardLocation(cardElement);
+            if (!location) return;
+
+            if (this.selectedCard) {
+                if (this.selectedCard === cardElement) {
+                    // Clicking the same card deselects it
+                    this.deselectCard();
+                } else {
+                    // Try to place the selected card on top of this card
+                    let moveSuccessful = false;
+
+                    if (location.type === 'column') {
+                        // Check if this is the last card in the column
+                        const column = this.columns[location.index];
+                        if (location.cardIndex === column.length - 1) {
+                            // Try to place selected card here
+                            moveSuccessful = this.moveToColumnOnCard(location.index);
+                        }
+                    }
+
+                    // If move failed and this card can be selected, select it instead
+                    if (!moveSuccessful && this.canSelectCard(location)) {
+                        this.deselectCard();
+                        this.selectCard(cardElement, location);
+                    } else if (!moveSuccessful) {
+                        // If move failed and card can't be selected, just deselect
+                        this.deselectCard();
+                    }
+                }
+            } else {
+                // No card selected, try to select this one
+                if (this.canSelectCard(location)) {
+                    this.selectCard(cardElement, location);
+                }
+            }
+        }
+
+        moveToColumnOnCard(columnIndex) {
+            // This is the same as moveToColumn but specifically for clicking on a card
+            return this.moveToColumn(columnIndex);
+        }
+
+        handleCellClick(cellElement) {
+            const cellIndex = parseInt(cellElement.dataset.cell);
+
+            if (this.cells[cellIndex] !== null) {
+                // There's a card in this cell, handle it as a card click
+                if (this.selectedCard) {
+                    // Check if clicking the same card
+                    const selectedCellIndex = this.selectedFrom && this.selectedFrom.type === 'cell' ?
+                        this.selectedFrom.index : -1;
+
+                    if (selectedCellIndex === cellIndex) {
+                        this.deselectCard();
+                    } else {
+                        // Can't place a card on an occupied cell
+                        this.deselectCard();
+                        // Select this cell's card instead
+                        this.selectCard(cellElement.querySelector('.card'), {type: 'cell', index: cellIndex});
+                    }
+                } else {
+                    // Select this cell's card
+                    this.selectCard(cellElement.querySelector('.card'), {type: 'cell', index: cellIndex});
+                }
+            } else {
+                // Empty cell - try to move selected card here
+                if (this.selectedCard) {
+                    const moveSuccessful = this.moveToCell(cellIndex);
+                    if (!moveSuccessful) {
+                        this.deselectCard();
+                    }
+                }
+            }
+        }
+
+        handleFoundationClick(foundationElement) {
+            const foundationIndex = parseInt(foundationElement.dataset.foundation);
+            const foundation = this.foundations[foundationIndex];
+
+            if (this.selectedCard) {
+                // Try to move selected card to this foundation
+                console.log('Attempting to move card to foundation', foundationIndex);
+                const moveSuccessful = this.moveToFoundation(foundationIndex);
+                if (moveSuccessful) {
+                    console.log('Move successful!');
+                } else {
+                    console.log('Move failed, deselecting');
+                    this.deselectCard();
+                }
+            } else if (foundation.length > 0) {
+                // Select the top card from the foundation
+                const topCard = foundation[foundation.length - 1];
+                // Don't allow removing Aces or cards that would break the sequence
+                if (topCard.numValue > 1 && this.canRemoveFromFoundation(foundationIndex)) {
+                    const cardElement = foundationElement.querySelector('.card');
+                    if (cardElement) {
+                        this.selectCard(cardElement, {type: 'foundation', index: foundationIndex});
+                    }
+                }
+            } else {
+                console.log('Empty foundation clicked, no card selected');
+            }
+        }
+
+        canRemoveFromFoundation(foundationIndex) {
+            const foundation = this.foundations[foundationIndex];
+            if (foundation.length === 0) return false;
+
+            const topCard = foundation[foundation.length - 1];
+
+            // Never remove Aces - they should stay in foundations
+            if (topCard.numValue === 1) return false;
+
+            // For simplicity, allow removing any card above Ace
+            // The game logic will prevent invalid moves anyway
+            return true;
+        }
+
+        handleEmptyColumnClick(columnElement) {
+            const columnIndex = parseInt(columnElement.dataset.column);
+            if (this.selectedCard && this.columns[columnIndex].length === 0) {
+                const moveSuccessful = this.moveToColumn(columnIndex);
+                if (!moveSuccessful) {
+                    this.deselectCard();
+                }
+            }
+        }
+
+        getCardLocation(cardElement) {
+            const parent = cardElement.parentElement;
+
+            if (parent.classList.contains('column')) {
+                const columnIndex = parseInt(parent.dataset.column);
+                const cardIndex = Array.from(parent.children).indexOf(cardElement);
+                return {type: 'column', index: columnIndex, cardIndex: cardIndex};
+            }
+
+            if (parent.classList.contains('cell')) {
+                const cellIndex = parseInt(parent.dataset.cell);
+                return {type: 'cell', index: cellIndex};
+            }
+
+            if (parent.classList.contains('foundation')) {
+                const foundationIndex = parseInt(parent.dataset.foundation);
+                return {type: 'foundation', index: foundationIndex};
+            }
+
+            return null;
+        }
+
+        canSelectCard(location) {
+            if (location.type === 'column') {
+                const column = this.columns[location.index];
+                for (let i = location.cardIndex; i < column.length - 1; i++) {
+                    const card1 = column[i];
+                    const card2 = column[i + 1];
+                    if (card1.color === card2.color || card1.numValue !== card2.numValue + 1) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (location.type === 'foundation') {
+                // Can select from foundation if it's safe to remove
+                return this.canRemoveFromFoundation(location.index);
+            }
+            return location.type === 'cell';
+        }
+
+        selectCard(cardElement, location) {
+            this.selectedCard = cardElement;
+            this.selectedFrom = location;
+            cardElement.classList.add('selected');
+
+            if (location.type === 'column') {
+                const parent = cardElement.parentElement;
+                const cards = Array.from(parent.children);
+                const startIndex = cards.indexOf(cardElement);
+                for (let i = startIndex + 1; i < cards.length; i++) {
+                    cards[i].classList.add('selected');
+                }
+            }
+        }
+
+        deselectCard() {
+            document.querySelectorAll('.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            this.selectedCard = null;
+            this.selectedFrom = null;
+        }
+
+        attemptMove(destination) {
+            if (destination.type === 'column') {
+                return this.moveToColumn(destination.index);
+            }
+            return false;
+        }
+
+        moveToColumn(columnIndex) {
+            if (!this.selectedFrom) return false;
+
+            const targetColumn = this.columns[columnIndex];
+            let cardsToMove = [];
+
+            if (this.selectedFrom.type === 'column') {
+                const sourceColumn = this.columns[this.selectedFrom.index];
+                cardsToMove = sourceColumn.slice(this.selectedFrom.cardIndex);
+            } else if (this.selectedFrom.type === 'cell') {
+                cardsToMove = [this.cells[this.selectedFrom.index]];
+            } else if (this.selectedFrom.type === 'foundation') {
+                // Moving from foundation back to column
+                const foundation = this.foundations[this.selectedFrom.index];
+                if (foundation.length === 0) return false;
+                cardsToMove = [foundation[foundation.length - 1]];
+            }
+
+            if (cardsToMove.length === 0) return false;
+
+            // Check max movable cards - use different calculation for empty columns
+            const maxMovable = targetColumn.length === 0 ?
+                this.getMaxMovableCardsToEmpty() :
+                this.getMaxMovableCards();
+
+            if (cardsToMove.length > maxMovable) return false;
+
+            if (targetColumn.length > 0) {
+                const lastCard = targetColumn[targetColumn.length - 1];
+                const firstMovingCard = cardsToMove[0];
+                if (lastCard.color === firstMovingCard.color ||
+                    lastCard.numValue !== firstMovingCard.numValue + 1) {
+                    return false;
+                }
+            }
+
+            this.saveHistory();
+
+            if (this.selectedFrom.type === 'column') {
+                this.columns[this.selectedFrom.index].splice(this.selectedFrom.cardIndex);
+            } else if (this.selectedFrom.type === 'cell') {
+                this.cells[this.selectedFrom.index] = null;
+            } else if (this.selectedFrom.type === 'foundation') {
+                this.foundations[this.selectedFrom.index].pop();
+            }
+
+            targetColumn.push(...cardsToMove);
+            this.incrementMoves();
+            this.deselectCard();
+            this.updateDisplay();
+
+            // Auto-move cards to foundations after each move
+            setTimeout(() => this.autoMoveToFoundations(), 200);
+
+            return true;
+        }
+
+        moveToCell(cellIndex) {
+            if (!this.selectedFrom || this.cells[cellIndex] !== null) return false;
+
+            let card;
+            if (this.selectedFrom.type === 'column') {
+                const column = this.columns[this.selectedFrom.index];
+                if (this.selectedFrom.cardIndex !== column.length - 1) return false;
+                card = column[column.length - 1];
+            } else if (this.selectedFrom.type === 'cell') {
+                card = this.cells[this.selectedFrom.index];
+            } else if (this.selectedFrom.type === 'foundation') {
+                // Moving from foundation to cell
+                const foundation = this.foundations[this.selectedFrom.index];
+                if (foundation.length === 0) return false;
+                card = foundation[foundation.length - 1];
+            } else {
+                return false;
+            }
+
+            this.saveHistory();
+
+            if (this.selectedFrom.type === 'column') {
+                this.columns[this.selectedFrom.index].pop();
+            } else if (this.selectedFrom.type === 'cell') {
+                this.cells[this.selectedFrom.index] = null;
+            } else if (this.selectedFrom.type === 'foundation') {
+                this.foundations[this.selectedFrom.index].pop();
+            }
+
+            this.cells[cellIndex] = card;
+            this.incrementMoves();
+            this.deselectCard();
+            this.updateDisplay();
+
+            // Auto-move cards to foundations after each move
+            setTimeout(() => this.autoMoveToFoundations(), 200);
+
+            return true;
+        }
+
+        moveToFoundation(foundationIndex) {
+            if (!this.selectedFrom) {
+                console.log('No selectedFrom');
+                return false;
+            }
+
+            let card;
+            if (this.selectedFrom.type === 'column') {
+                const column = this.columns[this.selectedFrom.index];
+                if (this.selectedFrom.cardIndex !== column.length - 1) {
+                    console.log('Not the last card in column');
+                    return false;
+                }
+                card = column[column.length - 1];
+            } else if (this.selectedFrom.type === 'cell') {
+                card = this.cells[this.selectedFrom.index];
+            } else if (this.selectedFrom.type === 'foundation') {
+                // Can't move from foundation to another foundation
+                console.log('Cannot move from foundation to foundation');
+                return false;
+            } else {
+                console.log('Unknown source type');
+                return false;
+            }
+
+            console.log('Trying to move card:', card.value, card.suit, 'to foundation', foundationIndex);
+
+            const foundation = this.foundations[foundationIndex];
+
+            // Check if the card can be placed in this foundation
+            // The foundation index corresponds to the suit order: ['♠', '♥', '♣', '♦']
+            const expectedSuit = this.suits[foundationIndex];
+            console.log('Expected suit for foundation:', expectedSuit, 'Card suit:', card.suit);
+
+            // Card must match the foundation's suit
+            if (card.suit !== expectedSuit) {
+                console.log('Suit mismatch');
+                return false;
+            }
+
+            // Check if it's the right value
+            if (foundation.length === 0) {
+                // Only Aces can start a foundation
+                if (card.value !== 'A') {
+                    console.log('Not an Ace for empty foundation');
+                    return false;
+                }
+            } else {
+                // Card must be exactly one higher than the top card
+                const lastCard = foundation[foundation.length - 1];
+                if (card.numValue !== lastCard.numValue + 1) {
+                    console.log('Value mismatch. Expected:', lastCard.numValue + 1, 'Got:', card.numValue);
+                    return false;
+                }
+            }
+
+            this.saveHistory();
+
+            if (this.selectedFrom.type === 'column') {
+                this.columns[this.selectedFrom.index].pop();
+            } else if (this.selectedFrom.type === 'cell') {
+                this.cells[this.selectedFrom.index] = null;
+            }
+
+            foundation.push(card);
+            this.incrementMoves();
+            this.deselectCard();
+            this.updateDisplay();
+            this.checkWin();
+
+            // Auto-move more cards after manual foundation move
+            setTimeout(() => this.autoMoveToFoundations(), 200);
+
+            return true;
+        }
+
+        getMaxMovableCards() {
+            const freeCells = this.cells.filter(c => c === null).length;
+            const freeColumns = this.columns.filter(c => c.length === 0).length;
+            // Formula correcta: (celdas_libres + 1) * 2^columnas_libres
+            // Pero si estamos moviendo a una columna vacía, esa columna no cuenta como libre
+            return (freeCells + 1) * Math.pow(2, freeColumns);
+        }
+
+        getMaxMovableCardsToEmpty() {
+            // When moving to an empty column, that column doesn't count as free
+            const freeCells = this.cells.filter(c => c === null).length;
+            const freeColumns = this.columns.filter(c => c.length === 0).length - 1;
+            return (freeCells + 1) * Math.pow(2, Math.max(0, freeColumns));
+        }
+
+        saveHistory() {
+            this.history.push({
+                columns: this.columns.map(col => [...col]),
+                cells: [...this.cells],
+                foundations: this.foundations.map(f => [...f]),
+                moves: this.moves
+            });
+        }
+
+        undo() {
+            if (this.history.length === 0) return;
+
+            const state = this.history.pop();
+            this.columns = state.columns;
+            this.cells = state.cells;
+            this.foundations = state.foundations;
+            this.moves = state.moves;
+
+            document.getElementById('moves').textContent = this.moves;
+            this.deselectCard();
+            this.updateDisplay();
+        }
+
+        autoMoveToFoundations() {
+            let moved = false;
+
+            // Get the minimum rank in foundations for each color
+            const minRankByColor = this.getMinFoundationRankByColor();
+
+            // Try to auto-move from columns
+            for (let col = 0; col < 8; col++) {
+                if (this.columns[col].length > 0) {
+                    const card = this.columns[col][this.columns[col].length - 1];
+                    if (this.canAutoMoveCard(card, minRankByColor)) {
+                        const foundationIndex = this.suits.indexOf(card.suit);
+                        this.columns[col].pop();
+                        this.foundations[foundationIndex].push(card);
+                        moved = true;
+                        this.incrementMoves();
+                    }
+                }
+            }
+
+            // Try to auto-move from cells
+            for (let i = 0; i < 4; i++) {
+                if (this.cells[i]) {
+                    const card = this.cells[i];
+                    if (this.canAutoMoveCard(card, minRankByColor)) {
+                        const foundationIndex = this.suits.indexOf(card.suit);
+                        this.cells[i] = null;
+                        this.foundations[foundationIndex].push(card);
+                        moved = true;
+                        this.incrementMoves();
+                    }
+                }
+            }
+
+            if (moved) {
+                this.updateDisplay();
+                // Continue checking for more auto-moves
+                setTimeout(() => this.autoMoveToFoundations(), 300);
+            }
+
+            return moved;
+        }
+
+        getMinFoundationRankByColor() {
+            const minRank = { red: 13, black: 13 };
+
+            for (let i = 0; i < 4; i++) {
+                const suit = this.suits[i];
+                const color = (suit === '♥' || suit === '♦') ? 'red' : 'black';
+                const foundation = this.foundations[i];
+                const rank = foundation.length > 0 ? foundation[foundation.length - 1].numValue : 0;
+                minRank[color] = Math.min(minRank[color], rank);
+            }
+
+            return minRank;
+        }
+
+        canAutoMoveCard(card, minRankByColor) {
+            const foundationIndex = this.suits.indexOf(card.suit);
+            const foundation = this.foundations[foundationIndex];
+
+            // Check if it can be placed in foundation
+            if (foundation.length === 0 && card.value !== 'A') return false;
+            if (foundation.length > 0) {
+                const lastCard = foundation[foundation.length - 1];
+                if (card.numValue !== lastCard.numValue + 1) return false;
+            }
+
+            // Auto-move Aces and 2s immediately
+            if (card.numValue <= 2) return true;
+
+            // For higher cards, check if all cards of rank-1 in opposite color are already in foundations
+            const oppositeColor = card.color === 'red' ? 'black' : 'red';
+            const minOppositeRank = minRankByColor[oppositeColor];
+
+            // Only auto-move if the card is at most one rank higher than the minimum opposite color
+            // This ensures we don't block potential moves
+            return card.numValue <= minOppositeRank + 1;
+        }
+
+        checkAutoComplete() {
+            // This is now the manual "Auto Complete" button function
+            let allInOrder = true;
+            for (let col of this.columns) {
+                if (col.length > 0) {
+                    for (let i = 0; i < col.length - 1; i++) {
+                        if (col[i].color === col[i + 1].color ||
+                            col[i].numValue !== col[i + 1].numValue + 1) {
+                            allInOrder = false;
+                            break;
+                        }
+                    }
+                }
+                if (!allInOrder) break;
+            }
+
+            if (allInOrder) {
+                const totalCards = this.columns.reduce((sum, col) => sum + col.length, 0) +
+                    this.cells.filter(c => c !== null).length;
+                if (totalCards > 0) {
+                    this.autoCompleteAll();
+                }
+            }
+        }
+
+        autoComplete() {
+            // Manual auto-complete button - moves all possible cards rapidly
+            this.autoCompleteAll();
+        }
+
+        autoCompleteAll() {
+            let moved = true;
+            const moveNext = () => {
+                moved = false;
+
+                // Try to move cards to foundations
+                for (let col = 0; col < 8; col++) {
+                    if (this.columns[col].length > 0) {
+                        const card = this.columns[col][this.columns[col].length - 1];
+                        const foundationIndex = this.suits.indexOf(card.suit);
+                        const foundation = this.foundations[foundationIndex];
+
+                        if (foundation.length === 0 && card.value === 'A' ||
+                            foundation.length > 0 && card.numValue === foundation[foundation.length - 1].numValue + 1) {
+                            this.columns[col].pop();
+                            this.foundations[foundationIndex].push(card);
+                            moved = true;
+                            this.incrementMoves();
+                            break;
+                        }
+                    }
+                }
+
+                if (!moved) {
+                    for (let i = 0; i < 4; i++) {
+                        if (this.cells[i]) {
+                            const card = this.cells[i];
+                            const foundationIndex = this.suits.indexOf(card.suit);
+                            const foundation = this.foundations[foundationIndex];
+
+                            if (foundation.length === 0 && card.value === 'A' ||
+                                foundation.length > 0 && card.numValue === foundation[foundation.length - 1].numValue + 1) {
+                                this.cells[i] = null;
+                                this.foundations[foundationIndex].push(card);
+                                moved = true;
+                                this.incrementMoves();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                this.updateDisplay();
+                this.checkWin();
+
+                if (moved) {
+                    setTimeout(moveNext, 100);
+                }
+            };
+
+            moveNext();
+        }
+
+        incrementMoves() {
+            this.moves++;
+            document.getElementById('moves').textContent = this.moves;
+        }
+
+        checkWin() {
+            const totalInFoundations = this.foundations.reduce((sum, f) => sum + f.length, 0);
+            if (totalInFoundations === 52) {
+                this.showWinMessage();
+            }
+        }
+
+        showWinMessage() {
+            clearInterval(this.timerInterval);
+            const winDiv = document.createElement('div');
+            winDiv.className = 'win-message';
+            winDiv.innerHTML = `
+                    <h2>¡Felicidades!</h2>
+                    <p>Has ganado en ${this.moves} movimientos</p>
+                    <p>Tiempo: ${document.getElementById('time').textContent}</p>
+                    <button onclick="game.newGame(); this.parentElement.remove()">Nueva Partida</button>
+                `;
+            document.body.appendChild(winDiv);
+        }
+
+        updateDisplay() {
+            // Clear all displays
+            document.querySelectorAll('.column').forEach(col => {
+                col.innerHTML = '';
+            });
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerHTML = '<span class="placeholder-text">Libre</span>';
+            });
+
+            document.querySelectorAll('.foundation').forEach((f, i) => {
+                f.innerHTML = `<span class="placeholder-text">A${this.suits[i]}</span>`;
+            });
+
+            // Display columns
+            this.columns.forEach((column, colIndex) => {
+                const columnElement = document.querySelector(`[data-column="${colIndex}"]`);
+                column.forEach((card, cardIndex) => {
+                    const cardElement = this.createCardElement(card);
+                    // Calculate overlap to show card values
+                    const isMobile = window.innerWidth <= 768;
+                    const overlap = isMobile ? 40 : 50;
+                    cardElement.style.top = `${cardIndex * overlap}px`;
+                    cardElement.style.zIndex = cardIndex;
+                    columnElement.appendChild(cardElement);
+                });
+            });
+
+            // Display cells
+            this.cells.forEach((card, cellIndex) => {
+                if (card) {
+                    const cellElement = document.querySelector(`[data-cell="${cellIndex}"]`);
+                    cellElement.innerHTML = '';
+                    cellElement.appendChild(this.createCardElement(card));
+                }
+            });
+
+            // Display foundations
+            this.foundations.forEach((foundation, foundIndex) => {
+                if (foundation.length > 0) {
+                    const foundElement = document.querySelector(`[data-foundation="${foundIndex}"]`);
+                    foundElement.innerHTML = '';
+                    const topCard = foundation[foundation.length - 1];
+                    foundElement.appendChild(this.createCardElement(topCard));
+                }
+            });
+        }
+
+        createCardElement(card) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = `card ${card.color}`;
+            cardDiv.innerHTML = `
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suit}</div>
+                `;
+            return cardDiv;
+        }
+    }
+
+    const game = new FreecellGame();
+</script>
+</body>
+</html>
